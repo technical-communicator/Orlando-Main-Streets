@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orlando Main Streets – District Maps</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #0d3b6e;
+      --orange:  #e8661a;
+      --green:   #4a7c59;
+      --light:   #f4f6f8;
+      --white:   #ffffff;
+      --shadow:  0 4px 20px rgba(0,0,0,0.15);
+      --radius:  10px;
+      --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--light);
+      color: #222;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    header {
+      background: var(--blue);
+      color: var(--white);
+      padding: 2.5rem 2rem 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    header::after {
+      content: "";
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--green), var(--orange), var(--green));
+    }
+    .header-eyebrow {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 0.5rem;
+    }
+    header h1 {
+      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+    header h1 span { color: var(--orange); }
+    .header-sub {
+      margin-top: 0.75rem;
+      font-size: 1rem;
+      color: rgba(255,255,255,0.72);
+      max-width: 560px;
+      margin-inline: auto;
+      line-height: 1.5;
+    }
+    .header-badge {
+      display: inline-block;
+      margin-top: 1.25rem;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 99px;
+      padding: 0.3rem 1rem;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.8);
+    }
+
+    /* ── Toolbar ─────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      max-width: 1400px;
+      margin: 1.5rem auto 0;
+      padding: 0 1.5rem;
+    }
+    .district-count {
+      font-size: 0.85rem;
+      color: #666;
+    }
+    .view-toggle {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .view-toggle button {
+      background: var(--white);
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: #555;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+    .view-toggle button.active,
+    .view-toggle button:hover {
+      background: var(--blue);
+      color: var(--white);
+      border-color: var(--blue);
+    }
+
+    /* ── Grid ────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      max-width: 1400px;
+      margin: 1.5rem auto 4rem;
+      padding: 0 1.5rem;
+    }
+    .grid.list-view {
+      grid-template-columns: 1fr;
+    }
+
+    /* ── Card ────────────────────────────────── */
+    .card {
+      position: relative;
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      cursor: pointer;
+      outline: none;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .card:hover,
+    .card:focus-visible {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 36px rgba(0,0,0,0.2);
+    }
+    .card:focus-visible {
+      outline: 3px solid var(--orange);
+      outline-offset: 2px;
+    }
+
+    .card-img-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      overflow: hidden;
+      background: #e8ecf0;
+    }
+    .grid.list-view .card-img-wrap {
+      aspect-ratio: 16 / 7;
+    }
+    .card-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+      display: block;
+      transition: transform var(--transition), filter var(--transition);
+    }
+    .card:hover .card-img-wrap img,
+    .card:focus-visible .card-img-wrap img {
+      transform: scale(1.04);
+      filter: brightness(0.55);
+    }
+
+    /* Type badge */
+    .type-badge {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      background: rgba(13, 59, 110, 0.88);
+      color: rgba(255,255,255,0.9);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.6rem;
+      border-radius: 99px;
+      backdrop-filter: blur(4px);
+    }
+
+    /* Overlay (hover info) */
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 1.5rem;
+      opacity: 0;
+      transition: opacity var(--transition);
+      pointer-events: none;
+    }
+    .card:hover .card-overlay,
+    .card:focus-visible .card-overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .overlay-district {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.2;
+      margin-bottom: 0.35rem;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    }
+    .overlay-date {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 0.65rem;
+      letter-spacing: 0.05em;
+    }
+    .overlay-desc {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.88);
+      line-height: 1.55;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      margin-bottom: 0.9rem;
+    }
+    .overlay-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--orange);
+      color: var(--white);
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      align-self: flex-start;
+    }
+    .overlay-cta:hover { background: #c85510; }
+
+    /* Footer label (always visible) */
+    .card-footer {
+      padding: 0.85rem 1rem;
+      background: var(--white);
+      border-top: 3px solid var(--blue);
+      transition: border-color var(--transition);
+    }
+    .card:hover .card-footer { border-color: var(--orange); }
+    .card-footer h2 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--blue);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-footer .footer-meta {
+      font-size: 0.72rem;
+      color: #888;
+      margin-top: 0.2rem;
+    }
+
+    /* List-view extras */
+    .grid.list-view .card {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      grid-template-rows: auto;
+    }
+    .grid.list-view .card-img-wrap {
+      grid-row: 1 / 3;
+    }
+    .grid.list-view .card-overlay {
+      left: 280px;
+    }
+    .grid.list-view .card-footer {
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-top: none;
+      border-left: 3px solid var(--blue);
+      padding: 1rem 1.25rem;
+    }
+    .grid.list-view .card:hover .card-footer { border-color: var(--orange); }
+    .grid.list-view .card-footer h2 {
+      font-size: 1.05rem;
+      white-space: normal;
+    }
+    .grid.list-view .card-footer .list-desc {
+      display: block;
+      font-size: 0.82rem;
+      color: #555;
+      margin-top: 0.4rem;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ── Modal ───────────────────────────────── */
+    #modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(5, 15, 30, 0.92);
+      backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    #modal.open { display: flex; }
+
+    .modal-inner {
+      background: var(--white);
+      border-radius: 14px;
+      overflow: hidden;
+      max-width: 1000px;
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: row;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+      animation: modalIn 0.3s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.94) translateY(16px); }
+      to   { opacity: 1; transform: scale(1)    translateY(0); }
+    }
+
+    .modal-img-pane {
+      flex: 0 0 45%;
+      background: #e8ecf0;
+      overflow: hidden;
+      position: relative;
+    }
+    .modal-img-pane img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: top center;
+      display: block;
+    }
+
+    .modal-info-pane {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-type {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--orange);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--blue);
+      line-height: 1.2;
+      margin-bottom: 0.4rem;
+    }
+    .modal-date {
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 1.25rem;
+    }
+    .modal-divider {
+      height: 3px;
+      background: linear-gradient(90deg, var(--blue), var(--orange));
+      border-radius: 99px;
+      margin-bottom: 1.25rem;
+      width: 60px;
+    }
+    .modal-desc {
+      font-size: 0.92rem;
+      color: #333;
+      line-height: 1.7;
+      flex: 1;
+    }
+    .modal-filename {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid #eee;
+      font-size: 0.75rem;
+      color: #aaa;
+      font-family: monospace;
+    }
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: var(--white);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 1.3rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      z-index: 10;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.3); }
+
+    /* ── Footer ──────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.8rem;
+      color: #999;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    /* ── Responsive ──────────────────────────── */
+    @media (max-width: 680px) {
+      .modal-inner { flex-direction: column; }
+      .modal-img-pane { flex: 0 0 240px; }
+      .grid.list-view .card { grid-template-columns: 1fr; }
+      .grid.list-view .card-img-wrap { grid-row: auto; }
+      .grid.list-view .card-overlay { left: 0; }
+      .grid.list-view .card-footer { border-left: none; border-top: 3px solid var(--blue); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <p class="header-eyebrow">City of Orlando · Economic Development</p>
+    <h1>Orlando <span>Main Streets</span></h1>
+    <p class="header-sub">Interactive maps for all 11 Main Street and Market Street districts. Hover over a district to learn more, or click to explore its full program map.</p>
+    <span class="header-badge">11 Districts · A Local Thing</span>
+  </header>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <p class="district-count">Showing <strong>11</strong> districts</p>
+    <div class="view-toggle" role="group" aria-label="Layout view">
+      <button class="active" id="btn-grid" aria-pressed="true">Grid</button>
+      <button id="btn-list" aria-pressed="false">List</button>
+    </div>
+  </div>
+
+  <!-- District Grid -->
+  <main class="grid" id="district-grid" aria-label="District map cards"></main>
+
+  <!-- Modal -->
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-el">
+    <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+    <div class="modal-inner">
+      <div class="modal-img-pane">
+        <img id="modal-img" src="" alt="">
+      </div>
+      <div class="modal-info-pane">
+        <p class="modal-type" id="modal-type-el"></p>
+        <h2 class="modal-title" id="modal-title-el"></h2>
+        <p class="modal-date" id="modal-date-el"></p>
+        <div class="modal-divider"></div>
+        <p class="modal-desc" id="modal-desc-el"></p>
+        <p class="modal-filename" id="modal-filename-el"></p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Source: City of Orlando – Economic Development Department &nbsp;|&nbsp; All maps produced by the City of Orlando.
+  </footer>
+
+  <script>
+    const districts = [
+      {
+        name: "Audubon Park Garden District",
+        file: "audubon-park-garden-district-map.png",
+        type: "Main Street Program",
+        date: "August 2016",
+        description: "Located in northeast Orlando, the Audubon Park Garden District centers on Corrine Drive — a tree-lined, walkable commercial corridor celebrated as "The Garden District." The target area spans several residential blocks surrounding the commercial strip, with nearby landmarks including Audubon Park, Lake Sue, Lake Rowena, Lake Cay Dee, and Lake Druid Park. The district is known for its independent boutiques, farm-to-table restaurants, and strong community identity."
+      },
+      {
+        name: "City District",
+        file: "city-district-map.png",
+        type: "Main Street Program",
+        date: "August 2025",
+        description: "The City District occupies the dense urban core of downtown Orlando. Its compact boundary runs from Robinson Street in the north to Anderson Street in the south, and from I-4 in the west to Orange Avenue in the east, with Lake Eola visible to the northeast. The district encompasses government buildings, corporate offices, cultural venues, and a growing residential population."
+      },
+      {
+        name: "The Drive – College Park",
+        file: "the-drive-college-park-main-street-map.png",
+        type: "Main Street Program",
+        date: "February 2026",
+        description: "\"The Drive\" is College Park's Main Street corridor along Edgewater Drive, northwest of downtown Orlando. The north–south target corridor is flanked by Lake Sarah and Lake Daniel to the northwest and Lake Ivanhoe to the southeast, with Lake Silver and Lake Adair also nearby. The area also includes Dubsdread Golf Course and Dartmouth Park. College Park is known for its craftsman bungalows and locally owned shops and restaurants."
+      },
+      {
+        name: "Gateway Orlando Market Street",
+        file: "gateway-orlando-market-street-map.png",
+        type: "Market Street Program",
+        date: "March 2021",
+        description: "The Gateway Orlando Market Street district follows a long commercial corridor along Orange Blossom Trail (US-441) in east Orlando, shown in two panels: Brosche Road to Pershing Avenue, and Pershing Avenue to SR-528. The district passes through communities with access to Lake Prentice, Airport Lakes Park, Barber Park, and Lake George. Gateway serves a diverse, densely populated corridor with retail, dining, and service businesses."
+      },
+      {
+        name: "Ivanhoe Village Main Street",
+        file: "ivanhoe-village-main-street-map.png",
+        type: "Main Street Program",
+        date: "October 2020",
+        description: "Just north of downtown Orlando, Ivanhoe Village centers on the Orlando Avenue / Edgewater Drive corridor and surrounds a chain of lakes: Lake Winyah, Lake Estelle, Lake Formosa, and Lake Ivanhoe. Key anchors include the Orlando Cultural Park (home to the Orlando Museum of Art and Orlando Science Center) and Orlando Loch Haven Park & Neighborhood Center. The district is celebrated for antique shops, galleries, dining, and arts venues."
+      },
+      {
+        name: "The Milk District",
+        file: "milk-district-main-street-map.png",
+        type: "Main Street Program",
+        date: "October 2020",
+        description: "The Milk District is a creative neighborhood east of downtown along East Colonial Drive (SR-50), running from Primrose Avenue to Woodward Street. It takes its name from the T.G. Lee dairy (still operating nearby) and is home to bars, live music venues, vintage shops, and independent restaurants. Lake Druid Park lies to the north and Orlando Main Park / Festival Park to the east, with the Colonialtown neighborhood overlapping the northern portions."
+      },
+      {
+        name: "Mills 50 Main Street",
+        file: "mills-50-main-street-map.png",
+        type: "Main Street Program",
+        date: "October 2020",
+        description: "Named for its location at the intersection of Mills Avenue and Colonial Drive (SR-50), the Mills 50 district spans a large and diverse area from Lake Ivanhoe and Lake Highland in the north to Lake Eola Park in the south. It incorporates Colonialtown, the Orlando Cultural Park, Lake Formosa Park, Big Tree Park, and Park Lake Park. Mills 50 is one of Orlando's most vibrant multicultural districts, recognized for its Asian restaurants, creative businesses, and independent shops."
+      },
+      {
+        name: "Parramore Main Street",
+        file: "parramore-main-street-map.jpg",
+        type: "Main Street Program",
+        date: "January 2022",
+        description: "Parramore is a historically significant African-American neighborhood immediately west of downtown Orlando. The map shows two zones: Zone 1 (green) covers the southern portion, and Zone 2 (orange) covers the northern portion near Lake Dot Park, with I-4 forming the eastern boundary. The district includes the Dr. J.B. Callahan Neighborhood Community Center and the Orlando Downtown Performing Arts Campus, and is undergoing revitalization while preserving its cultural heritage."
+      },
+      {
+        name: "SoDo District Main Street",
+        file: "sodo-district-main-street-map.png",
+        type: "Main Street Program",
+        date: "January 2017",
+        description: "SoDo — South of Downtown Orlando — is a large residential and commercial area directly south of downtown. The target area is bordered by multiple lakes: Lake Davis, Lake Lancaster, Lake Copeland, Lake Of The Woods, Lake Lurna, Crystal Lake, and Lake Pineloch. Wadeview Park and Community Center sits at the interior. SoDo features mid-century neighborhoods, retail corridors, and the prominent SoDo shopping center along Orange Avenue."
+      },
+      {
+        name: "Thornton Park Main Street",
+        file: "thornton-park-main-street-map.png",
+        type: "Main Street Program",
+        date: "October 2020",
+        description: "Thornton Park is an upscale historic neighborhood immediately east of downtown Orlando. The target area wraps around Lake Eola and Lake Eola Park — Orlando's iconic urban park and amphitheater — extending from Livingston Street in the north to South Street in the south, and from Magnolia Avenue to Summerlin Avenue. The district is known for its brick-lined streets, craftsman bungalows, outdoor dining, and the popular Sunday Farmers Market at Lake Eola."
+      },
+      {
+        name: "West Lakes Market Street",
+        file: "west-lakes-market-street-map.jpg",
+        type: "Market Street Program",
+        date: "October 2021",
+        description: "West Lakes Properties Market Street covers a broad residential and commercial zone in west Orlando, stretching from W. Colonial Drive in the north to Grand Street in the south, and from John Young Parkway to Kirkman Road. The district is defined by its many lakes — Dick Lake, Lake Lorna Doone, Lake Sunset, and Lake Conway — along with Lorna Doone Park and the John N. Jackson Neighborhood Garden and Pool. West Lakes serves a diverse population with a focus on economic development along its commercial corridors."
+      }
+    ];
+
+    // Build cards
+    const grid = document.getElementById('district-grid');
+
+    districts.forEach((d, i) => {
+      const card = document.createElement('article');
+      card.className = 'card';
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', `${d.name} — click to expand`);
+
+      card.innerHTML = `
+        <div class="card-img-wrap">
+          <img src="${d.file}" alt="Program map for ${d.name}" loading="${i < 6 ? 'eager' : 'lazy'}">
+          <span class="type-badge">${d.type}</span>
+          <div class="card-overlay">
+            <p class="overlay-district">${d.name}</p>
+            <p class="overlay-date">${d.date}</p>
+            <p class="overlay-desc">${d.description}</p>
+            <button class="overlay-cta" tabindex="-1" aria-hidden="true">
+              View Full Map ↗
+            </button>
+          </div>
+        </div>
+        <div class="card-footer">
+          <h2>${d.name}</h2>
+          <p class="footer-meta">${d.date} &middot; ${d.type}</p>
+          <p class="list-desc" hidden>${d.description}</p>
+        </div>
+      `;
+
+      card.addEventListener('click', () => openModal(d));
+      card.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(d); }
+      });
+
+      grid.appendChild(card);
+    });
+
+    // View toggle
+    const btnGrid = document.getElementById('btn-grid');
+    const btnList = document.getElementById('btn-list');
+
+    btnGrid.addEventListener('click', () => {
+      grid.classList.remove('list-view');
+      btnGrid.classList.add('active');   btnGrid.setAttribute('aria-pressed', 'true');
+      btnList.classList.remove('active'); btnList.setAttribute('aria-pressed', 'false');
+      grid.querySelectorAll('.list-desc').forEach(el => el.hidden = true);
+    });
+
+    btnList.addEventListener('click', () => {
+      grid.classList.add('list-view');
+      btnList.classList.add('active');   btnList.setAttribute('aria-pressed', 'true');
+      btnGrid.classList.remove('active'); btnGrid.setAttribute('aria-pressed', 'false');
+      grid.querySelectorAll('.list-desc').forEach(el => el.hidden = false);
+    });
+
+    // Modal
+    const modal        = document.getElementById('modal');
+    const modalImg     = document.getElementById('modal-img');
+    const modalType    = document.getElementById('modal-type-el');
+    const modalTitle   = document.getElementById('modal-title-el');
+    const modalDate    = document.getElementById('modal-date-el');
+    const modalDesc    = document.getElementById('modal-desc-el');
+    const modalFile    = document.getElementById('modal-filename-el');
+    const modalClose   = document.getElementById('modal-close');
+
+    function openModal(d) {
+      modalImg.src      = d.file;
+      modalImg.alt      = `Full program map for ${d.name}`;
+      modalType.textContent  = d.type;
+      modalTitle.textContent = d.name;
+      modalDate.textContent  = d.date;
+      modalDesc.textContent  = d.description;
+      modalFile.textContent  = d.file;
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      modalClose.focus();
+    }
+
+    function closeModal() {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    modalClose.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  </script>
+</body>
+</html>

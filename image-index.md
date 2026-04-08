@@ -77,7 +77,7 @@ A program map for the **Parramore Main Street** district, a historically signifi
 ---
 
 ## 9. SoDo District Main Street
-**File:** `sodo-district-main-street-map.jpg`  
+**File:** `sodo-district-main-street-map.png`  
 **Date:** January 2017  
 **Dimensions:** 2254 × 3165 px
 
