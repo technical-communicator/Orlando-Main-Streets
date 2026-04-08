@@ -50,9 +50,9 @@ header h1 span { color: var(--orange); }
 /* ── Grid ────────────────────────────────── */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);   /* 3 columns on desktop */
   gap: 1.5rem;
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 2rem auto 4rem;
   padding: 0 1.5rem;
 }
@@ -264,7 +264,79 @@ footer {
 }
 
 /* ── Responsive ──────────────────────────── */
-@media (max-width: 660px) {
-  .modal-box { flex-direction: column; }
-  .modal-img-pane { flex: 0 0 220px; }
+
+/* Tablet: 2 columns */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile: 1 column */
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0 1rem;
+    margin: 1.25rem auto 2.5rem;
+  }
+
+  header {
+    padding: 2rem 1rem 1.75rem;
+  }
+
+  .subtitle {
+    font-size: .9rem;
+  }
+
+  /* Shorter image on mobile so the card doesn't dominate the whole screen */
+  .card-image {
+    aspect-ratio: 4 / 3;
+  }
+
+  /* Larger label text for readability */
+  .card-label {
+    padding: 1rem;
+  }
+  .card-label h3 {
+    font-size: 1rem;
+    white-space: normal;
+  }
+  .card-label p {
+    font-size: .78rem;
+  }
+
+  /* Modal stacks vertically on mobile */
+  .modal-box {
+    flex-direction: column;
+    max-height: 92vh;
+    border-radius: 10px;
+  }
+  .modal-img-pane {
+    flex: 0 0 200px;
+  }
+  .modal-info-pane {
+    padding: 1.25rem;
+  }
+  #modal-title {
+    font-size: 1.2rem;
+  }
+}
+
+/* Disable hover effects on touch-only devices to prevent sticky hover states */
+@media (hover: none) {
+  .card:hover .card-image img {
+    transform: none;
+    filter: none;
+  }
+  .card:hover .overlay {
+    opacity: 0;
+  }
+  .card:hover .card-label {
+    border-color: var(--blue);
+  }
+  /* Show district name prominently instead */
+  .card:active .card-label {
+    border-color: var(--orange);
+  }
 }
