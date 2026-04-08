@@ -480,6 +480,8 @@
   </footer>
 
   <script>
+    const GITHUB_RAW = "https://raw.githubusercontent.com/technical-communicator/Orlando-Main-Streets/main/";
+
     const districts = [
       {
         name: "Audubon Park Garden District",
@@ -572,7 +574,7 @@
 
       card.innerHTML = `
         <div class="card-img-wrap">
-          <img src="${d.file}" alt="Program map for ${d.name}" loading="${i < 6 ? 'eager' : 'lazy'}">
+          <img src="${GITHUB_RAW}${d.file}" alt="Program map for ${d.name}" loading="${i < 6 ? 'eager' : 'lazy'}">
           <span class="type-badge">${d.type}</span>
           <div class="card-overlay">
             <p class="overlay-district">${d.name}</p>
@@ -627,7 +629,7 @@
     const modalClose   = document.getElementById('modal-close');
 
     function openModal(d) {
-      modalImg.src      = d.file;
+      modalImg.src      = GITHUB_RAW + d.file;
       modalImg.alt      = `Full program map for ${d.name}`;
       modalType.textContent  = d.type;
       modalTitle.textContent = d.name;
